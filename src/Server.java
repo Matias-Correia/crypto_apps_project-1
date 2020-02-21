@@ -78,7 +78,7 @@ class Room{
   }
 }
 
-public class ChatServer
+public class Server
 {
   // A pre-allocated buffer for the received data
   static private final ByteBuffer buffer = ByteBuffer.allocate( 16384 );
