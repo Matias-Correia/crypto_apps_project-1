@@ -4,13 +4,14 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.nio.charset.*;
+import java.util.Scanner;
 
 public class Client {
 
     // Variaveis relacionadas com a interface grafica --- * NAO MODIFICAR *
-    JFrame frame = new JFrame("Chat Client");
-    private JTextField chatBox = new JTextField();
-    private JTextArea chatArea = new JTextArea();
+//    JFrame frame = new JFrame("Chat Client");
+//    private JTextField chatBox = new JTextField();
+//    private JTextArea chatArea = new JTextArea();
     // --- Fim das variaveis relacionadas coma interface grafica
 
     // Se for necessario adicionar variaveis ao objecto ChatClient, devem
@@ -24,7 +25,7 @@ public class Client {
 
     // Metodo a usar para acrescentar uma string a caixa de texto
     // * NAO MODIFICAR *
-    public void printMessage(String message) {
+    private void printMessage(String message) {
       message = message.replace("\n","");
       String[] tokens = message.split(" ");
       switch(tokens[0]){
@@ -53,47 +54,56 @@ public class Client {
         }
       }
       System.out.println("PRINTING: " + message);
-      chatArea.append(message + "\n");
+      //chatArea.append(message + "\n");
     }
 
     // Construtor
-    public Client(String server, int port) throws IOException {
+    Client(String server, int port) throws IOException {
 
         // Inicializacao da interface grafica --- * NAO MODIFICAR *
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        panel.add(chatBox);
-        frame.setLayout(new BorderLayout());
-        frame.add(panel, BorderLayout.SOUTH);
-        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
-        frame.setSize(500, 300);
-        frame.setVisible(true);
-        chatArea.setEditable(false);
-        chatBox.setEditable(true);
-        chatBox.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    newMessage(chatBox.getText());
-                } catch (IOException ex) {
-                } finally {
-                   chatBox.setText("");
-                }
-            }
-        });
+//        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        JPanel panel = new JPanel();
+//        panel.setLayout(new BorderLayout());
+//        panel.add(chatBox);
+//        frame.setLayout(new BorderLayout());
+//        frame.add(panel, BorderLayout.SOUTH);
+//        frame.add(new JScrollPane(chatArea), BorderLayout.CENTER);
+//        frame.setSize(500, 300);
+//        frame.setVisible(true);
+//        chatArea.setEditable(false);
+//        chatBox.setEditable(true);
+//        chatBox.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent e) {
+//                try {
+//                    newMessage(chatBox.getText());
+//                } catch (IOException ex) {
+//                } finally {
+//                   chatBox.setText("");
+//                }
+//            }
+//        });
         // --- Fim da inicializacao da interface grafica
-
-        // Se for necessario adicionar codigo de inicializacao ao
+    	
+    	// Se for necessario adicionar codigo de inicializacao ao
         // construtor, deve ser colocado aqui
         this.server = (InetAddress.getByName(server)).getHostAddress();
         this.port = port;
 
+    	
+    	//Interação para Envio de mensagem
+    	Scanner scan = new Scanner(System.in);
+		String s = scan.next();
+    	while(true) {
+    		System.out.println("Escreva a mensagem");
+    		newMessage(scan.nextLine());    		
+    	}    	
+        
     }
 
     // Metodo invocado sempre que o utilizador insere uma mensagem
     // na caixa de entrada
-    public void newMessage(String message) throws IOException {
+    private void newMessage(String message) throws IOException {
         // PREENCHER AQUI com codigo que envia a mensagem ao servidor
         message = message.trim(); //so it doesn't send extra spaces
         System.out.println("SENDING: " + message);
@@ -102,22 +112,13 @@ public class Client {
     }
 
     // Metodo principal do objecto
-    public void run() throws IOException {
+    private void run() throws IOException {
         // PREENCHER AQUI
         clientSocket = new Socket(server, port);
         new Thread(new Listener()).start();
     }
 
-    // Instancia o ChatClient e arranca-o invocando o seu metodo run()
-    public static void main(String[] args) throws IOException {
-        Client client = new Client(args[0], Integer.parseInt(args[1]));
-        client.run();
-    }
-
-    class Listener implements Runnable {
-      public Listener(){
-
-      }
+    private class Listener implements Runnable {
 
       public void run(){
         try{
@@ -143,6 +144,12 @@ public class Client {
 
       }
 
+    }
+    
+    // Instancia o ChatClient e arranca-o invocando o seu metodo run()
+    public static void main(String[] args) throws IOException {
+        Client client = new Client(args[0], Integer.parseInt(args[1]));
+        client.run();
     }
 
 }
