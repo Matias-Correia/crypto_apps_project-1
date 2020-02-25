@@ -15,14 +15,14 @@ public class Server{
   static private final CharsetDecoder decoder = charset.newDecoder();
   static private final CharsetEncoder encoder = charset.newEncoder();
 
-  static private HashSet<Room> rooms = new HashSet<>();
   static private HashSet<SelectionKey> users = new HashSet<>();
 
   static private Selector selector;
-
+  
+  
   static public void main( String args[] ) throws Exception {
     // Parse port from command line
-    int port = Integer.parseInt( args[0] );
+    int port = Integer.parseInt( "1234" );
 
     try {
       // Instead of creating a ServerSocket, create a ServerSocketChannel
@@ -100,7 +100,7 @@ public class Server{
               // If the connection is dead, remove it from the selector
               // and close it
               if (!ok) {
-                removeUser(key);
+                users.remove(key);
                 key.cancel();
 
                 Socket s = null;
@@ -120,7 +120,7 @@ public class Server{
 
               try {
                 sc.close();
-              } catch( IOException ie2 ) {
+              } catch( IOException | NullPointerException ne ) { //JAVARDEIRA
                 //System.out.println( ie2 );
               }
 
@@ -156,255 +156,23 @@ public class Server{
 
     //checking if it's a \n or a Ctrl+D
     User auxUser = (User) key.attachment();
-    message = auxUser.getMessage() + message;
-    if(!message.endsWith("\n")){
-      auxUser.addMessage(message);
-      return true;
-    }
-
-    if(message.startsWith("/nick ")){
-      String nick = message.substring(6);//6 = "/nick ".length()
-      nick = nick.replace("\n", "");
-      nick(key, nick);
-    }
-    else if(message.startsWith("/join ")){
-      String room = message.substring(6);//6 = "/join ".length()
-      room = room.replace("\n","");
-      join(key, room);
-    }
-    else if(message.startsWith("/leave")){
-      leave(key);
-    }
-    else if(message.startsWith("/bye")){
-      bye(key);
-    }
-    else if(message.startsWith("/priv ")){
-      try{
-        String aux = message.substring(6);
-        String user = "";
-        int i;
-        for(i=0; aux.charAt(i)!=' '; i++){
-          user = user + aux.charAt(i);
-        }
-        message = aux.substring(i + 1);
-        message = message.replace("\n","");
-        priv(key, user, message);
-      } catch(StringIndexOutOfBoundsException e){
-        send(key, "ERROR");
-      }
-    }
-    else if(message.startsWith("/help")){
-      help(key);
-    }
-    else {
-      message = message.replace("\n","");
-      message(key, message);
-    }
+    message = auxUser.getMessage() + message; 
+    message = message.replace("\n","");
+    message(key, message);
+   
 
     auxUser.cleanMessage();
     return true;
-  }
+  }  
 
-
-  static private void nick(SelectionKey key, String nick) throws IOException{
-    User user = (User) key.attachment();
-
-    //checking for users with the same nickname
-    for(SelectionKey aux : users){
-      User auxUser = (User) aux.attachment();
-      if(auxUser.getNickname().compareTo(nick) == 0){
-        send(key, "ERROR");
-        return;
-      }
-    }
-
-    //checking if the user is in a room
-    if(user.getState() == State.inside){
-      String oldnick = user.getNickname();
-      String message = "NEWNICK " + oldnick + " " + nick;
-      Room room = user.getRoom();
-      sendToOthersInRoom(room, key, message);
-    }
-    else {
-      user.setState(State.outside);
-    }
-    user.setNickname(nick);
-    //key.attach(user);
-    send(key, "OK");
-  }
-
-  static private void join(SelectionKey key, String room) throws IOException{
-    User user = (User) key.attachment();
-    if(user.getState() == State.init){
-      send(key, "ERROR");
-      return;
-    }
-    Room auxRoom = user.getRoom();
-    if(auxRoom != null){
-      if(auxRoom.getName().compareTo(room) == 0){
-        //if the user is already in the room itself
-        send(key, "ERROR");
-        return;
-      }
-    }
-    Room roomy = null;
-    for(Room aux : rooms){
-      if(aux.getName().compareTo(room) == 0){
-        roomy = aux;
-        break;
-      }
-    }
-    if(user.isInRoom()){
-      leave(key);
-    }
-    if(roomy != null){ //room already exists
-      user.setRoom(roomy);
-      roomy.addUser(key);
-    }
-    else { //room doesn't exist
-      roomy = new Room(room);
-      user.setRoom(roomy);
-      roomy.addUser(key);
-      rooms.add(roomy);
-    }
-    send(key, "OK");
-    sendToOthersInRoom(roomy, key, "JOINED " + user.getNickname());
-    user.setState(State.inside);
-
-  }
-
-  static private void leave(SelectionKey key) throws IOException {
-    User user = (User) key.attachment();
-    if(user.getState() != State.inside){
-      send(key, "ERROR");
-      return;
-    }
-    Room room = user.getRoom();
-    room.removeUser(key);
-    user.setRoom(null);
-    user.setState(State.outside);
-    //deleting the room if it becomes empty
-    if(room.isEmpty()){
-      rooms.remove(room);
-    }
-    else{
-      sendToRoom(room, "LEFT " + user.getNickname());
-    }
-    send(key, "OK");
-  }
-
-  static private void leaveForBye(SelectionKey key) throws IOException {
-    User user = (User) key.attachment();
-    if(user.getState() != State.inside){
-      return;
-    }
-    Room room = user.getRoom();
-    room.removeUser(key);
-    user.setRoom(null);
-    user.setState(State.outside);
-    //deleting the room if it becomes empty
-    if(room.isEmpty()){
-      rooms.remove(room);
-    }
-    else{
-      sendToRoom(room, "LEFT " + user.getNickname());
-    }
-  }
-
-  static private void bye(SelectionKey key) throws IOException {
-    User user = (User) key.attachment();
-    if(user.getState() == State.inside){
-      leaveForBye (key);
-    }
-    send(key, "BYE");
-    users.remove(key);
-    SocketChannel sc = (SocketChannel) key.channel();
-    Socket s = null;
-    try {
-      s = sc.socket();
-      //System.out.println( "Closing connection to "+s );
-      s.close();
-    } catch(IOException e){
-      //System.err.println( "Error closing socket "+s+": "+e );
-    }
-  }
-
-  static private void removeUser(SelectionKey key) throws IOException{
-    //this function is to be used when the connection is lost
-    //to remove the user from the "database" and inform other users
-    User user = (User) key.attachment();
-    if(user.getState() == State.inside){
-      Room room = user.getRoom();
-      room.removeUser(key);
-      //deleting the room if it becomes empty
-      if(room.isEmpty()){
-        rooms.remove(room);
-      }
-      else{
-        sendToRoom(room, "LEFT " + user.getNickname());
-      }
-    }
-    users.remove(key);
-  }
-
-  static private void priv(SelectionKey key, String user, String message) throws IOException{
-    for(SelectionKey auxKey : users){
-      User recipientUser = (User) auxKey.attachment();
-
-      if(recipientUser.getNickname().compareTo(user) == 0){
-
-        User senderUser = (User) key.attachment();
-        send(auxKey , "PRIVATE " + senderUser.getNickname() + " " + message);
-        send(key    , "PRIVATE " + senderUser.getNickname() + " " + message);
-        return;
-
-      }
-    }
-    send(key, "ERROR");
-  }
-
-  static private void help(SelectionKey key) throws IOException{
-    SocketChannel sc = (SocketChannel) key.channel();
-    String message =    "/nick nickname      - to add a nickname\n";
-    message = message + "/join room          - to join a room\n";
-    message = message + "/leave              - to leave the room\n";
-    message = message + "/priv user message  - to send a private message\n";
-    message = message + "/bye                - to disconnect from the server";
-    send(key, message);
-  }
 
   static private void message(SelectionKey key, String message) throws IOException {
     User user = (User) key.attachment();
-    if(user.getState() != State.inside){
-      send(key, "ERROR");
-      return;
-    }
     if(message.charAt(0) == '/'){
       message = "/" + message;
     }
-    message = "MESSAGE " + user.getNickname() + " " + message;
-    sendToRoom(user.getRoom(), message);
-  }
-
-  static private void send(SelectionKey key, String message) throws IOException {
-    message = message + "\n";
-    SocketChannel sc = (SocketChannel) key.channel();
-    sc.write(encoder.encode(CharBuffer.wrap(message)));
-  }
-
-  static private void sendToRoom(Room room, String message) throws IOException {
-    for(SelectionKey user : room.getUsers()){
-        send(user, message);
-    }
-  }
-
-  static private void sendToOthersInRoom(Room room, SelectionKey exception, String message) throws IOException {
-    for(SelectionKey user : room.getUsers()){
-      if(user == exception){
-        continue;
-      }
-      send(user, message);
-    }
+    message = "MESSAGE " + " " + message;
+    System.out.println(message);
   }
 
 }
