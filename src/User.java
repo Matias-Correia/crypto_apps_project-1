@@ -1,20 +1,24 @@
 class User{
  
   private String message = ""; //i need this to avoid responding to Ctrl + D on netcat
-
-  User(){
-   
+  private int id; 
+  
+  User(int id){
+	  this.id = id;
   }
 
- 
-  String getMessage(){
+  public int getID() {
+	  return id;
+  }
+  
+  public String getMessage(){
     return message;
   }
 
-  void cleanMessage(){
+  public void cleanMessage(){
     this.message = "";
   }
-  void addMessage(String message){
+  public void addMessage(String message){
     this.message = this.message + message;
   }
 

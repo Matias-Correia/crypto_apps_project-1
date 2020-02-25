@@ -4,6 +4,7 @@ import java.nio.*;
 import java.nio.channels.*;
 import java.nio.charset.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class Server{
@@ -18,7 +19,7 @@ public class Server{
   static private HashSet<SelectionKey> users = new HashSet<>();
 
   static private Selector selector;
-  
+  private static AtomicInteger userCount = new AtomicInteger(0);
   
   static public void main( String args[] ) throws Exception {
     // Parse port from command line
@@ -89,8 +90,9 @@ public class Server{
 
               // Registering a new user
               if(key.attachment() == null){
-                key.attach(new User());
-                users.add(key);
+            	  int auxid = userCount.incrementAndGet();
+            	  key.attach(new User(auxid));
+	              users.add(key);
               }
 
               // It's incoming data on a connection -- process it
@@ -102,7 +104,7 @@ public class Server{
               if (!ok) {
                 users.remove(key);
                 key.cancel();
-
+                
                 Socket s = null;
                 try {
                   s = sc.socket();
@@ -121,7 +123,8 @@ public class Server{
               try {
                 sc.close();
               } catch( IOException | NullPointerException ne ) { //JAVARDEIRA
-                //System.out.println( ie2 );
+            	  User user = (User) key.attachment();
+                  System.out.println("USER " + user.getID() + " DISCONECTED");
               }
 
               //System.out.println( "Closed " + sc );
@@ -171,7 +174,7 @@ public class Server{
     if(message.charAt(0) == '/'){
       message = "/" + message;
     }
-    message = "MESSAGE " + " " + message;
+    message = "[" + user.getID() + "]"  + message;
     System.out.println(message);
   }
 
