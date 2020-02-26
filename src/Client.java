@@ -53,7 +53,7 @@ public class Client {
         // PREENCHER AQUI
         clientSocket = new Socket(server, port);
         new Thread(new Listener()).start();
-      //Interação para Envio de mensagem
+      //Interacao para Envio de mensagem
         System.out.println("Escreva a mensagem");
     	while(true) {
     		newMessage(br.readLine());    		
