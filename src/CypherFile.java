@@ -44,15 +44,23 @@ public class CypherFile {
     }
     
     
-	public static void main(String[] args) throws FileNotFoundException {
-		
-		File initialFile = new File("src/CypherMe.txt");
-		InputStream initialStream = new FileInputStream(initialFile);
-		
-		File finalFile = new File("src/DecypherMe.txt");
-		OutputStream finalStream = new FileOutputStream(finalFile);
-		
-		doCrypto(Cipher.ENCRYPT_MODE, "qwertyuiopasdfgh", initialStream , finalStream);
-		
-	}
+    public static void main(String[] args) throws FileNotFoundException {
+
+        File initialFile = new File("src/CypherME.txt");
+        InputStream initialStream = new FileInputStream(initialFile);
+
+        File finalFile = new File("src/DecypherMe.txt");
+        OutputStream finalStream = new FileOutputStream(finalFile);
+
+        doCrypto(Cipher.ENCRYPT_MODE, "qwertyuiopasdfgh", initialStream , finalStream);
+
+        initialFile = new File("src/DecypherMe.txt");
+        finalFile = new File("src/End.txt");
+
+        initialStream = new FileInputStream(initialFile);
+        finalStream = new FileOutputStream(finalFile);
+
+        doCrypto(Cipher.DECRYPT_MODE, "qwertyuiopasdfgh", initialStream , finalStream);
+
+    }
 }
