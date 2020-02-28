@@ -1,9 +1,4 @@
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -20,7 +15,7 @@ public class CypherFile {
 	
     
     private static void doCrypto(int cipherMode, String key, InputStream inputFile,
-            OutputStream outputFile){
+            OutputStream outputFile) {
         try {
             SecretKey secretKey = new SecretKeySpec(key.getBytes(), ALGORITHM);
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
@@ -46,7 +41,7 @@ public class CypherFile {
     
     public static void main(String[] args) throws FileNotFoundException {
 
-        File initialFile = new File("src/CypherME.txt");
+        File initialFile = new File("src/CypherMe.txt");
         InputStream initialStream = new FileInputStream(initialFile);
 
         File finalFile = new File("src/DecypherMe.txt");
@@ -60,7 +55,12 @@ public class CypherFile {
         initialStream = new FileInputStream(initialFile);
         finalStream = new FileOutputStream(finalFile);
 
-        doCrypto(Cipher.DECRYPT_MODE, "qwertyuiopasdfgh", initialStream , finalStream);
+        doCrypto(Cipher.DECRYPT_MODE, "qwertyuiopasdfgh", initialStream, finalStream);
+
+
+
+
+
 
     }
 }
