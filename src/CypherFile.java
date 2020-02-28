@@ -1,45 +1,48 @@
 import java.io.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
+import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
 
 
 public class CypherFile {
 
 	private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES";
-	
-    
+
+
+
+
+
     private static void doCrypto(int cipherMode, String key, InputStream inputFile,
             OutputStream outputFile) {
         try {
+            //TODO acabar de por o initialization vector no AES
+            byte[] iv = new byte[16];
+            SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+            random.nextBytes(iv);
+
             SecretKey secretKey = new SecretKeySpec(key.getBytes(), ALGORITHM);
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             cipher.init(cipherMode, secretKey);
-             
-            CipherInputStream inputStream = new CipherInputStream(inputFile, cipher);
-            byte[] inputBytes = (inputFile).readAllBytes();
-            inputStream.read(inputBytes);
-             
+
+
+            byte[] inputBytes = new byte[inputFile.available()];
+            inputFile.read(inputBytes);
+
             byte[] outputBytes = cipher.doFinal(inputBytes);
-             
-            CipherOutputStream outputStream = new CipherOutputStream(outputFile, cipher);
-            outputStream.write(outputBytes);
-             
-            inputStream.close();
-            outputStream.close();
-             
-        } catch (Exception e) {
-            System.err.println(e);
+            outputFile.write(outputBytes);
+
+        }
+        catch(NoSuchAlgorithmException | IOException | NoSuchPaddingException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e) {
+            e.printStackTrace();
         }
     }
     
     
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws IOException {
 
         File initialFile = new File("src/CypherMe.txt");
         InputStream initialStream = new FileInputStream(initialFile);
