@@ -1,10 +1,8 @@
+package aula1e2;
+
 import java.io.*;
 import java.net.*;
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
 import java.nio.charset.*;
-import java.util.Scanner;
 
 public class Client {
 
