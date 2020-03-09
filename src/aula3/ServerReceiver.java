@@ -32,7 +32,8 @@ public class ServerReceiver extends Thread{
 			
 			while (true){ 
                 try{ 
-                    m = in.read(); 
+                    m = in.read();
+					System.out.println("--> " + (char) m);
                     s.addMessage((char)m, id);
   
                 } 

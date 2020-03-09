@@ -2,12 +2,15 @@ package aula3;
 
 // A Java program for a Server
 import java.net.*;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import java.io.*;
 
@@ -26,14 +29,17 @@ public class Server extends Thread{
     public Server(int port) {
         // starts server and waits for a connection
         try {
+            String key = "1234567890123456";
+            SecretKey secretKey = new SecretKeySpec(key.getBytes(), MODE);
         	this.c = Cipher.getInstance(MODE);
+        	c.init(c.DECRYPT_MODE, secretKey);
         	this.serverInstance = this;
         	server = new ServerSocket(port);
         	conAccepter = new ConnectionAccepter(server, this);
         	conAccepter.run();
         	this.run();
         }
-        catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException i) {
+        catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException i) {
         	try {
 				server.close();
 			} catch (IOException e) {

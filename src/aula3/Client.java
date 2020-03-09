@@ -2,11 +2,14 @@ package aula3;
 
 // A Java program for a Client
 import java.net.*;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import java.io.*;
 
@@ -24,13 +27,22 @@ public class Client {
         try {
             socket = new Socket(address, port);
             System.out.println("Connected");
-            
+
+
+            String key = "1234567890123456";
+            SecretKey secretKey = new SecretKeySpec(key.getBytes(), MODE);
             c = Cipher.getInstance(MODE);
+            try {
+                c.init(c.ENCRYPT_MODE, secretKey);
+            } catch (InvalidKeyException e) {
+                e.printStackTrace();
+            }
             // takes input from terminal
             input  = new DataInputStream(System.in);
 
             // sends output to the socket
             out    = new CipherOutputStream(socket.getOutputStream(),c);
+
         }
         catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException u) {
         	u.printStackTrace();
@@ -45,6 +57,8 @@ public class Client {
             try {
                 line = input.readChar();
                 out.write(line);
+                out.flush();
+                System.out.println("-->" + line);
             }
             catch(IOException i) {
             	try {
