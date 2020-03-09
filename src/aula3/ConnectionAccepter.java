@@ -9,7 +9,8 @@ public class ConnectionAccepter extends Thread{
 
 	private Socket          socket   = null;
 	private ServerSocket    serverSocket   = null;
-	private Server serverInstance;
+	private Server 			serverInstance;
+	private int id = 0;
 	
 	ConnectionAccepter(ServerSocket serverSocket, Server serverInstance){
 		this.serverSocket = serverSocket;
@@ -22,7 +23,8 @@ public class ConnectionAccepter extends Thread{
         	while(true) {
         		socket = serverSocket.accept();
         		System.out.println("Client accepted");
-                ServerReceiver newClient = new ServerReceiver(socket);
+                ServerReceiver newClient = new ServerReceiver(socket,id);
+                id++;
                 serverInstance.addClient(newClient);               
                 socket.close();
         	}

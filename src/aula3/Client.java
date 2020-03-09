@@ -2,57 +2,65 @@ package aula3;
 
 // A Java program for a Client
 import java.net.*;
+import java.security.NoSuchAlgorithmException;
+
+import javax.crypto.Cipher;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.NoSuchPaddingException;
+
 import java.io.*;
 
 public class Client {
     // initialize socket and input output streams
     private Socket socket            = null;
     private DataInputStream  input   = null;
-    private DataOutputStream out     = null;
-
+    private CipherOutputStream out     = null;
+    private static final String MODE = "AES";
+    private Cipher c; 
+    
     // constructor to put ip address and port
     public Client(String address, int port) {
         // establish a connection
         try {
             socket = new Socket(address, port);
             System.out.println("Connected");
-
+            
+            c = Cipher.getInstance(MODE);
             // takes input from terminal
             input  = new DataInputStream(System.in);
 
             // sends output to the socket
-            out    = new DataOutputStream(socket.getOutputStream());
+            out    = new CipherOutputStream(socket.getOutputStream(),c);
         }
-        catch(UnknownHostException u) {
-            System.out.println(u);
+        catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException u) {
+        	u.printStackTrace();
         }
-        catch(IOException i) {
-            System.out.println(i);
-        }
+      
 
         // string to read message from input
-        String line = "";
+        char line;
 
         // keep reading until "Over" is input
-        while (!line.equals("Over")) {
+        while (true) {
             try {
-                line = input.readLine();
-                out.writeUTF(line);
+                line = input.readChar();
+                out.write(line);
             }
             catch(IOException i) {
+            	try {
+					input.close();
+					out.close();
+	                socket.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+                
                 System.out.println(i);
             }
         }
 
-        // close the connection
-        try {
-            input.close();
-            out.close();
-            socket.close();
-        }
-        catch(IOException i) {
-            System.out.println(i);
-        }
+       
+       
     }
 
     public static void main(String args[]) {
