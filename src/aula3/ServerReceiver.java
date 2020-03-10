@@ -12,10 +12,8 @@ public class ServerReceiver extends Thread{
 	private Socket socket;
 	private int id;
 	private Server s = Server.getInstance();
-	private CipherInputStream cis;
 	private Cipher c;
-	private CipherInputStream in;
-	
+
 	ServerReceiver(Socket socket, int id){
 		c = s.getCipher();
 		this.socket = socket;
@@ -27,27 +25,27 @@ public class ServerReceiver extends Thread{
 		
 		 // takes input from the client socket 
        try {
-			in = new CipherInputStream(new BufferedInputStream(socket.getInputStream()),c);
-			int m = 0;
+		   CipherInputStream cis = new CipherInputStream(new BufferedInputStream(socket.getInputStream()), c);
+			int m;
 			
 			while (true){ 
                 try{ 
-                    m = in.read();
+                    m = cis.read();
 					System.out.println("--> " + (char) m);
                     s.addMessage((char)m, id);
   
                 } 
                 catch(IOException i){ 
                 	socket.close(); 
-        		    in.close(); 
-                    System.out.println(i); 
-                } 
+        		    cis.close();
+					i.printStackTrace();
+                }
             }
 			
-		} catch (IOException e) {
+       } catch (IOException e) {
 			e.printStackTrace();
 			
-		} 
+       }
       
 	}
 	
