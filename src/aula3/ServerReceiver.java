@@ -1,6 +1,8 @@
 package aula3;
 
 import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
@@ -30,10 +32,11 @@ public class ServerReceiver extends Thread{
 			
 			while (true){ 
                 try{ 
-                    m = cis.read();
-					System.out.println("--> " + (char) m);
-                    s.addMessage((char)m, id);
-  
+					DataInputStream dis = new DataInputStream(socket.getInputStream());
+					m = dis.read();
+					System.out.println("--> " + dis.read());
+                    s.addMessage((char) m, id);
+
                 } 
                 catch(IOException i){ 
                 	socket.close(); 

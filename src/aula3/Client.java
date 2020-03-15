@@ -19,7 +19,8 @@ public class Client {
     private DataInputStream  input   = null;
     private CipherOutputStream out     = null;
     private static final String MODE = "AES";
-    private Cipher c; 
+    private Cipher c;
+    DataOutputStream dos;
     
     // constructor to put ip address and port
     public Client(String address, int port) {
@@ -40,6 +41,8 @@ public class Client {
             // takes input from terminal
             input  = new DataInputStream(System.in);
 
+
+            dos  = new DataOutputStream(socket.getOutputStream());
             // sends output to the socket
             out    = new CipherOutputStream(socket.getOutputStream(),c);
 
@@ -56,8 +59,8 @@ public class Client {
         while (true) {
             try {
                 line = input.readChar();
-                out.write(line);
-                out.flush();
+                dos.write(line);
+                dos.flush();
                 System.out.println("-->" + line);
             }
             catch(IOException i) {
