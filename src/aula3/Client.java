@@ -4,6 +4,7 @@ package aula3;
 import java.net.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Scanner;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
@@ -16,17 +17,17 @@ import java.io.*;
 public class Client {
     // initialize socket and input output streams
     private Socket socket            = null;
-    private DataInputStream  input   = null;
-    private CipherOutputStream out     = null;
+    private Scanner  input   = null;
     private static final String MODE = "AES";
     private Cipher c;
-    DataOutputStream dos;
+    private OutputStream os = null;
     
     // constructor to put ip address and port
     public Client(String address, int port) {
         // establish a connection
         try {
             socket = new Socket(address, port);
+            os = socket.getOutputStream();
             System.out.println("Connected");
 
 
@@ -39,12 +40,8 @@ public class Client {
                 e.printStackTrace();
             }
             // takes input from terminal
-            input  = new DataInputStream(System.in);
+            input  = new Scanner(System.in);
 
-
-            dos  = new DataOutputStream(socket.getOutputStream());
-            // sends output to the socket
-            out    = new CipherOutputStream(socket.getOutputStream(),c);
 
         }
         catch(IOException | NoSuchAlgorithmException | NoSuchPaddingException u) {
@@ -52,26 +49,23 @@ public class Client {
         }
       
 
-        // string to read message from input
-        char line;
-
         // keep reading until "Over" is input
-        while (true) {
+       while (true) {
             try {
-                line = input.readChar();
-                dos.write(line);
-                dos.flush();
-                System.out.println("-->" + line);
+                // string to read message from input
+            	String inputString = input.nextLine();
+                byte[] line = new byte[inputString.length()];                
+                line = inputString.getBytes();                
+                os.write(line);
             }
             catch(IOException i) {
             	try {
 					input.close();
-					out.close();
-	                socket.close();
+					os.close();
+	                
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-                
                 System.out.println(i);
             }
         }

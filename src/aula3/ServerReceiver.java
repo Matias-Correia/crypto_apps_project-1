@@ -4,7 +4,9 @@ import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
+import java.nio.charset.Charset;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -15,40 +17,41 @@ public class ServerReceiver extends Thread{
 	private int id;
 	private Server s = Server.getInstance();
 	private Cipher c;
+	private InputStream is = null;
 
 	ServerReceiver(Socket socket, int id){
 		c = s.getCipher();
 		this.socket = socket;
+		try {
+			is = socket.getInputStream();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		this.id = id;
 	}
 	
 	@Override
 	public void run() {
 		
-		 // takes input from the client socket 
-       try {
-		   CipherInputStream cis = new CipherInputStream(new BufferedInputStream(socket.getInputStream()), c);
-			int m;
-			
-			while (true){ 
-                try{ 
-					DataInputStream dis = new DataInputStream(socket.getInputStream());
-					m = dis.read();
-					System.out.println("--> " + dis.read());
-                    s.addMessage((char) m, id);
+		 //CipherInputStream cis = new CipherInputStream(socket.getInputStream(), c);
+	byte[] m = new byte[200];
+	
+	while (true){ 
+	    try{ 
+	    	
+	    	int l = is.read(m);
+			//int l = socket.getInputStream().read(m);
+			String x = new String(m, Charset.defaultCharset());
+			System.out.println("--> " + x);
+	        //s.addMessage((char) m, id);
 
-                } 
-                catch(IOException i){ 
-                	socket.close(); 
-        		    cis.close();
-					i.printStackTrace();
-                }
-            }
-			
-       } catch (IOException e) {
-			e.printStackTrace();
-			
-       }
+	    } 
+	    catch(IOException i){ 
+			i.printStackTrace();
+		   	return;
+	    }
+	}
       
 	}
 	
