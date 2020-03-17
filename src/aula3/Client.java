@@ -1,26 +1,20 @@
 package aula3;
 
-// A Java program for a Client
 import java.net.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
-
-import javax.crypto.Cipher;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
+import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
-
 import java.io.*;
 
 public class Client {
     // initialize socket and input output streams
-    private Socket socket            = null;
-    private Scanner  input   = null;
-    private static final String MODE = "AES";
+    private Socket socket               = null;
+    private Scanner  input              = null;
+    private static final String MODE    = "AES";
     private Cipher c;
-    private OutputStream os = null;
+    private OutputStream os             = null;
     
     // constructor to put ip address and port
     public Client(String address, int port) {
@@ -31,6 +25,7 @@ public class Client {
             System.out.println("Connected");
 
 
+            //cipher initialization
             String key = "1234567890123456";
             SecretKey secretKey = new SecretKeySpec(key.getBytes(), MODE);
             c = Cipher.getInstance(MODE);
@@ -49,14 +44,15 @@ public class Client {
         }
       
 
-        // keep reading until "Over" is input
+        // reading and sending input
        while (true) {
             try {
                 // string to read message from input
             	String inputString = input.nextLine();
-                byte[] line = new byte[inputString.length()];                
-                line = inputString.getBytes();                
-                os.write(line);
+            	byte[] line = inputString.getBytes();
+                byte [] cipheredLine = c.doFinal(line);
+
+                os.write(cipheredLine);
             }
             catch(IOException i) {
             	try {
@@ -67,8 +63,12 @@ public class Client {
 					e.printStackTrace();
 				}
                 System.out.println(i);
+            } catch (BadPaddingException e) {
+                e.printStackTrace();
+            } catch (IllegalBlockSizeException e) {
+                e.printStackTrace();
             }
-        }
+       }
 
        
        
