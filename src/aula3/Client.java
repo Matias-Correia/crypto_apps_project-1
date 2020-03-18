@@ -75,6 +75,7 @@ public class Client {
                 }
 
                 int remainder = line.length % 16;
+                if(remainder == 0) remainder = 16;
                 byte[] lastBlock = Arrays.copyOfRange(line, i*16, i*16 + remainder);
                 byte[] cipheredLine = c.doFinal(lastBlock);
                 os.write(cipheredLine);
