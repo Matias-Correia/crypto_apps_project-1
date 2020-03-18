@@ -48,16 +48,23 @@ public class Client {
         // reading and sending input
        while (true) {
             try {
+
                 // string to read message from input
             	String inputString = input.nextLine();
-            	byte[] line = inputString.getBytes();
+                byte[] newline = inputString.getBytes();
+                byte[] line = new byte[newline.length + 1];
 
-            	//adding line size to the first index of the array
+            	//adding numBlocks to the first byte
+                int lineSize = line.length + 1;
 
+                if( lineSize % 16 == 0) line[0] = (byte) (lineSize / 16);
+                else                    line[0] = (byte) (lineSize / 16 + 1);
 
-                //partitioning the message in 16 bytes blocks to cipher
-            	int lineSize = line.length;
+                for(int i=1; i<line.length; i++) { //copying the array to one that has the numBlocks in the first byte
+                    line[i] = newline[i - 1];
+                }
 
+                //partitioning in blocks of size 16 bytes to cipher
                 int i = 0;
                 while(lineSize >= 16){
                     byte[] first16 = Arrays.copyOfRange(line, i * 16, (i + 1) * 16);
@@ -71,6 +78,7 @@ public class Client {
                 byte[] lastBlock = Arrays.copyOfRange(line, i*16, i*16 + remainder);
                 byte[] cipheredLine = c.doFinal(lastBlock);
                 os.write(cipheredLine);
+
             }
 
 
@@ -88,6 +96,9 @@ public class Client {
             } catch (IllegalBlockSizeException e) {
                 e.printStackTrace();
             }
+
+
+
        }
 
        

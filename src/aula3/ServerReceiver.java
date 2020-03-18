@@ -6,6 +6,7 @@ import java.net.Socket;
 import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -46,25 +47,38 @@ public class ServerReceiver extends Thread{
 		//12345678901234567890
 		byte[] cipheredLine = new byte[16];
 
+		int numBlocks = 1;
+		int counter = 0;
+
 		while (true){
 			try{
-
+				//System.out.println("output size ===>" + c.getOutputSize(16));
+				//System.out.println("block size  ===>" + c.getBlockSize());
 				int l = is.read(cipheredLine);
-
-				System.out.println("output size ===>" + c.getOutputSize(16));
-				System.out.println("block size  ===>" + c.getBlockSize());
-
-				if(c.getBlockSize() < 16){
+				String x = "";
+				if(counter == numBlocks){
 					byte[] decipheredLine = c.doFinal(cipheredLine);
-					String x = new String(decipheredLine, Charset.defaultCharset());
-					System.out.println("-->" + x);
+					x = new String(decipheredLine, Charset.defaultCharset());
+					numBlocks = 1;
+					counter = 0;
 				}
-				else {
+				else if(counter == 0){
+					//buscar o primeiro byte com o tamanho da lista de blocos
 					byte[] decipheredLine = c.update(cipheredLine);
-					String x = new String(decipheredLine, Charset.defaultCharset());
-					System.out.println("--> " + x);
+					numBlocks = decipheredLine[0];
+
+					//remover o primeiro byte antes de imprimir
+					decipheredLine = Arrays.copyOfRange(decipheredLine, 1, decipheredLine.length);
+					x = new String(decipheredLine, Charset.defaultCharset());
+					counter++;
+				}
+				else{
+					byte[] decipheredLine = c.update(cipheredLine);
+					x = new String(decipheredLine, Charset.defaultCharset());
+					counter++;
 				}
 
+				System.out.println("--> " + x);
 
 			}
 			catch(IOException i){
