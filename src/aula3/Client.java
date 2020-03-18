@@ -3,6 +3,7 @@ package aula3;
 import java.net.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Scanner;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
@@ -50,10 +51,29 @@ public class Client {
                 // string to read message from input
             	String inputString = input.nextLine();
             	byte[] line = inputString.getBytes();
-                byte [] cipheredLine = c.doFinal(line);
 
+            	//adding line size to the first index of the array
+
+
+                //partitioning the message in 16 bytes blocks to cipher
+            	int lineSize = line.length;
+
+                int i = 0;
+                while(lineSize >= 16){
+                    byte[] first16 = Arrays.copyOfRange(line, i * 16, (i + 1) * 16);
+                    byte[] cipheredLine = c.update(first16);
+                    os.write(cipheredLine);
+                    i++;
+                    lineSize = lineSize-16;
+                }
+
+                int remainder = line.length % 16;
+                byte[] lastBlock = Arrays.copyOfRange(line, i*16, i*16 + remainder);
+                byte[] cipheredLine = c.doFinal(lastBlock);
                 os.write(cipheredLine);
             }
+
+
             catch(IOException i) {
             	try {
 					input.close();

@@ -43,26 +43,44 @@ public class ServerReceiver extends Thread{
 	
 	@Override
 	public void run() {
-		
+		//12345678901234567890
 		byte[] cipheredLine = new byte[16];
 
 		while (true){
 			try{
 
 				int l = is.read(cipheredLine);
-				byte[] decipheredLine = c.doFinal(cipheredLine);
 
-				String x = new String(decipheredLine, Charset.defaultCharset());
-				System.out.println("--> " + x);
-				//s.addMessage((char) m, id);
+				System.out.println("output size ===>" + c.getOutputSize(16));
+				System.out.println("block size  ===>" + c.getBlockSize());
+
+				if(c.getBlockSize() < 16){
+					byte[] decipheredLine = c.doFinal(cipheredLine);
+					String x = new String(decipheredLine, Charset.defaultCharset());
+					System.out.println("-->" + x);
+				}
+				else {
+					byte[] decipheredLine = c.update(cipheredLine);
+					String x = new String(decipheredLine, Charset.defaultCharset());
+					System.out.println("--> " + x);
+				}
+
 
 			}
 			catch(IOException i){
 				i.printStackTrace();
+			} catch (BadPaddingException e) {
+				e.printStackTrace();
+			} catch (IllegalBlockSizeException e) {
+				e.printStackTrace();
 			}
+			/*
 			catch (BadPaddingException | IllegalBlockSizeException e) {
 				e.printStackTrace();
 			}
+
+			 */
+
 		}
 
 	}
