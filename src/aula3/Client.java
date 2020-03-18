@@ -51,32 +51,32 @@ public class Client {
 
                 // string to read message from input
             	String inputString = input.nextLine();
-                byte[] newline = inputString.getBytes();
-                byte[] line = new byte[newline.length + 1];
+                byte[] inputBytes = inputString.getBytes();
+                byte[] numBlocks = new byte[1];
 
             	//adding numBlocks to the first byte
-                int lineSize = line.length + 1;
+                int lineSize = inputBytes.length + 1;
 
-                if( lineSize % 16 == 0) line[0] = (byte) (lineSize / 16);
-                else                    line[0] = (byte) (lineSize / 16 + 1);
+                if( lineSize % 16 == 0) numBlocks[0] = (byte) (lineSize / 16);
+                else                    numBlocks[0] = (byte) (lineSize / 16 + 1);
 
-                for(int i=1; i<line.length; i++) { //copying the array to one that has the numBlocks in the first byte
-                    line[i] = newline[i - 1];
-                }
+                byte[] line = Arrays.copyOf(numBlocks, numBlocks.length + inputBytes.length);
+                System.arraycopy(inputBytes, 0, line, numBlocks.length, inputBytes.length);
+
 
                 //partitioning in blocks of size 16 bytes to cipher
                 int i = 0;
                 while(lineSize >= 16){
-                    byte[] first16 = Arrays.copyOfRange(line, i * 16, (i + 1) * 16);
+                    byte[] first16 = Arrays.copyOfRange(numBlocks, i * 16, (i + 1) * 16);
                     byte[] cipheredLine = c.update(first16);
                     os.write(cipheredLine);
                     i++;
                     lineSize = lineSize-16;
                 }
 
-                int remainder = line.length % 16;
+                int remainder = numBlocks.length % 16;
                 if(remainder == 0) remainder = 16;
-                byte[] lastBlock = Arrays.copyOfRange(line, i*16, i*16 + remainder);
+                byte[] lastBlock = Arrays.copyOfRange(numBlocks, i*16, i*16 + remainder);
                 byte[] cipheredLine = c.doFinal(lastBlock);
                 os.write(cipheredLine);
 
