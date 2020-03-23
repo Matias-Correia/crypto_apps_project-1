@@ -40,23 +40,31 @@ public class ServerReceiver extends Thread{
 	public void run() {
 		//12345678901234567890
 		byte[] cipheredLine = new byte[16];
-		byte[] numBlocks = {1};
+		int numBlocks;
 
 		while (true){
 			try{
-				is.read(numBlocks);
-				for(int i=0; i<numBlocks[0]; i++){
-					String x = "";
-					int l = is.read(cipheredLine);
+				byte[] cipheredNumBlocks = new byte[16];
+				int l = 0;
+				while(l == 0) {
+					l = is.read(cipheredNumBlocks);
+				}
+				byte[] numBlocksBytes = new byte[16];
+				numBlocksBytes = c.doFinal(cipheredNumBlocks);
+				numBlocks = toInt(numBlocksBytes);
+
+				for(int i=0; i<numBlocks; i++){
+					String x;
+					l = is.read(cipheredLine);
 
 					if(l > 0){
 
-						if(numBlocks[0] == 1){
+						if(numBlocks == 1){
 							//first is last
 							byte[] decipheredLine = c.doFinal(cipheredLine);
 							x = new String(decipheredLine, Charset.defaultCharset());
 						}
-						else if(i<numBlocks[0] - 1){
+						else if(i<numBlocks - 1){
 							//first isn't last or middle block
 							byte[] decipheredLine = c.update(cipheredLine);
 							x = new String(decipheredLine, Charset.defaultCharset());
@@ -72,12 +80,8 @@ public class ServerReceiver extends Thread{
 				}
 
 			}
-			catch(IOException i){
+			catch(IOException | BadPaddingException | IllegalBlockSizeException i){
 				i.printStackTrace();
-			} catch (BadPaddingException e) {
-				e.printStackTrace();
-			} catch (IllegalBlockSizeException e) {
-				e.printStackTrace();
 			}
 
 		}
@@ -98,6 +102,13 @@ public class ServerReceiver extends Thread{
 		}
 		IvParameterSpec ivParams = new IvParameterSpec(iv);
 		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
+	}
+
+	int toInt(byte[] bytes) {
+		return ((bytes[0] & 0xFF) << 24) |
+				((bytes[1] & 0xFF) << 16) |
+				((bytes[2] & 0xFF) << 8 ) |
+				((bytes[3] & 0xFF) << 0 );
 	}
 
 }

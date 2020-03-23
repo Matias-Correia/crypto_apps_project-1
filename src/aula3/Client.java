@@ -53,10 +53,11 @@ public class Client {
                 if( inputString.length() % 16 == 0) numBlocks = (byte) (inputString.length() / 16);
                 else                                numBlocks = (byte) (inputString.length() / 16 + 1);
 
-                //byte[] numBlocksBytes = new byte[4];
-                //numBlocksBytes[0] = (byte) numBlocks;
 
-                os.write(numBlocks);
+                byte[] numBlocksBytes = toBytes(numBlocks);
+                byte[] cipheredNumBlocks = new byte[16];
+                cipheredNumBlocks = c.doFinal(numBlocksBytes);
+                os.write(cipheredNumBlocks);
 
                 //partitioning in blocks of size 16 bytes to cipher
                 int i = 0;
@@ -118,6 +119,17 @@ public class Client {
 
     	os.write(ivParams.getIV());
         c.init(c.ENCRYPT_MODE, secretKey, ivParams);
+    }
+
+    byte[] toBytes(int i) {
+        byte[] result = new byte[16];
+
+        result[0] = (byte) (i >> 24);
+        result[1] = (byte) (i >> 16);
+        result[2] = (byte) (i >> 8);
+        result[3] = (byte) (i /* >> 0*/);
+
+        return result;
     }
 
     public static void main(String args[]) {
