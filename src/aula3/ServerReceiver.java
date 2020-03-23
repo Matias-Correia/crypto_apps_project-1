@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
 import java.nio.charset.Charset;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import javax.crypto.*;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 public class ServerReceiver extends Thread{
@@ -17,26 +19,19 @@ public class ServerReceiver extends Thread{
 	private Server s = Server.getInstance();
 	private Cipher c;
 	private InputStream is = null;
-	private static final String MODE = "AES";
-
+	private static final String MODE = "AES/CBC/NoPadding";
+	private byte[] iv = new byte[16];
 
 	ServerReceiver(Socket socket, int id){
 		// establish a connection
 		this.socket = socket;
-		try {
-			is = socket.getInputStream();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		this.id = id;
 
-		//cipher initialization
-		String key = "1234567890123456";
-		SecretKey secretKey = new SecretKeySpec(key.getBytes(), MODE);
 		try {
-			this.c = Cipher.getInstance(MODE);
-			c.init(Cipher.DECRYPT_MODE, secretKey);
-		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException e) {
+			is = socket.getInputStream();
+			initCipher();
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
+				| InvalidAlgorithmParameterException | IOException e) {
 			e.printStackTrace();
 		}
 
@@ -49,35 +44,30 @@ public class ServerReceiver extends Thread{
 
 		int numBlocks = 1;
 		int counter = 0;
-
+		boolean first = true;
+			
 		while (true){
 			try{
-				//System.out.println("output size ===>" + c.getOutputSize(16));
-				//System.out.println("block size  ===>" + c.getBlockSize());
 				int l = is.read(cipheredLine);
 				String x = "";
-				if(counter == numBlocks){
-					byte[] decipheredLine = c.doFinal(cipheredLine);
-					x = new String(decipheredLine, Charset.defaultCharset());
-					numBlocks = 1;
-					counter = 0;
-				}
-				else if(counter == 0){
-					//buscar o primeiro byte com o tamanho da lista de blocos
+				if(first && l != 0) {
+					first = false;
 					byte[] decipheredLine = c.update(cipheredLine);
 					numBlocks = decipheredLine[0];
-
-					//remover o primeiro byte antes de imprimir
-					decipheredLine = Arrays.copyOfRange(decipheredLine, 1, decipheredLine.length);
-					x = new String(decipheredLine, Charset.defaultCharset());
-					counter++;
-				}
-				else{
+					if(numBlocks == 1) {
+						c.doFinal();
+					}else {
+						counter++;
+					}
+					
+				}else if(l != 0 && counter != numBlocks) {
 					byte[] decipheredLine = c.update(cipheredLine);
-					x = new String(decipheredLine, Charset.defaultCharset());
-					counter++;
+					counter ++;
+				}else if(l != 0 && counter == numBlocks) {
+					byte[] decipheredLine = c.doFinal(cipheredLine);
+					counter = 0;
+					numBlocks = 1; 
 				}
-
 				System.out.println("--> " + x);
 
 			}
@@ -99,5 +89,22 @@ public class ServerReceiver extends Thread{
 
 	}
 	
+	//cipher initialization
+	private void initCipher() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
+		
+		String key = "1234567890123456";
+		SecretKey secretKey = new SecretKeySpec(key.getBytes(), MODE);
+		this.c = Cipher.getInstance(MODE);
+		while(true) {
+			if(is.available() != 0) {
+				System.out.println("Aqui");
+				is.read(iv);
+				System.out.println(iv);
+				break;
+			}
+		}
+		IvParameterSpec ivParams = new IvParameterSpec(iv);
+		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
+	}
 	
 }

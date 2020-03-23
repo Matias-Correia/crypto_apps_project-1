@@ -1,11 +1,14 @@
 package aula3;
 
 import java.net.*;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Scanner;
 import javax.crypto.*;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 
@@ -13,9 +16,10 @@ public class Client {
     // initialize socket and input output streams
     private Socket socket               = null;
     private Scanner  input              = null;
-    private static final String MODE    = "AES";
+    private static final String MODE    = "AES/CBC/NoPadding";
     private Cipher c;
     private OutputStream os             = null;
+    private byte[] iv = new byte[16];
     
     // constructor to put ip address and port
     public Client(String address, int port) {
@@ -25,16 +29,12 @@ public class Client {
             os = socket.getOutputStream();
             System.out.println("Connected");
 
-
-            //cipher initialization
-            String key = "1234567890123456";
-            SecretKey secretKey = new SecretKeySpec(key.getBytes(), MODE);
-            c = Cipher.getInstance(MODE);
             try {
-                c.init(c.ENCRYPT_MODE, secretKey);
-            } catch (InvalidKeyException e) {
-                e.printStackTrace();
-            }
+				initCipher();
+			} catch (InvalidKeyException | InvalidAlgorithmParameterException e) {
+				e.printStackTrace();
+			}
+         
             // takes input from terminal
             input  = new Scanner(System.in);
 
@@ -104,6 +104,20 @@ public class Client {
 
        
        
+    }
+    
+
+    //cipher initialization
+    public void initCipher() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
+    	String key = "1234567890123456";
+        SecretKey secretKey = new SecretKeySpec(key.getBytes(), MODE);
+        c = Cipher.getInstance(MODE);
+    	SecureRandom randomSecureRandom = new SecureRandom();
+    	iv = new byte[c.getBlockSize()];
+    	randomSecureRandom.nextBytes(iv);
+    	IvParameterSpec ivParams = new IvParameterSpec(iv);
+    	os.write(ivParams.getIV());
+        c.init(c.ENCRYPT_MODE, secretKey, ivParams);
     }
 
     public static void main(String args[]) {
