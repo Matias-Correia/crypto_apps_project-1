@@ -40,19 +40,21 @@ public class ServerReceiver extends Thread{
 	public void run() {
 		//12345678901234567890
 		byte[] cipheredLine = new byte[16];
-		int numBlocks;
-
+		int numBlocks = 0;
+		byte[] cipheredNumBlocks = new byte[16];
+			
 		while (true){
 			try{
-				byte[] cipheredNumBlocks = new byte[16];
+				
 				int l = 0;
-				while(l == 0) {
-					l = is.read(cipheredNumBlocks);
+				l = is.read(cipheredNumBlocks);
+				System.out.println(cipheredNumBlocks);
+				if(l > 0) {
+					byte[] numBlocksBytes = c.doFinal(cipheredNumBlocks);
+					numBlocks = Integer.valueOf(bytetoString(numBlocksBytes));
 				}
-				byte[] numBlocksBytes = new byte[16];
-				numBlocksBytes = c.doFinal(cipheredNumBlocks);
-				numBlocks = toInt(numBlocksBytes);
-
+				
+				
 				for(int i=0; i<numBlocks; i++){
 					String x;
 					l = is.read(cipheredLine);
@@ -104,11 +106,14 @@ public class ServerReceiver extends Thread{
 		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
 	}
 
-	int toInt(byte[] bytes) {
-		return ((bytes[0] & 0xFF) << 24) |
-				((bytes[1] & 0xFF) << 16) |
-				((bytes[2] & 0xFF) << 8 ) |
-				((bytes[3] & 0xFF) << 0 );
+	private String bytetoString(byte[] bytes) {
+		StringBuilder value = new StringBuilder();
+		
+		for(int i=0; i < bytes.length; i++) {
+			value.append((char)bytes[i]);
+		}
+		
+		return value.toString();
 	}
 
 }

@@ -54,10 +54,13 @@ public class Client {
                 else                                numBlocks = (byte) (inputString.length() / 16 + 1);
 
 
-                byte[] numBlocksBytes = toBytes(numBlocks);
-                byte[] cipheredNumBlocks = new byte[16];
-                cipheredNumBlocks = c.doFinal(numBlocksBytes);
+                byte[] numBlocksBytes = new byte[16];
+                numBlocksBytes = String.valueOf(numBlocks).getBytes();
+                System.out.println(numBlocksBytes.length);
+                byte[] cipheredNumBlocks = c.doFinal(numBlocksBytes);
+                System.out.println(cipheredNumBlocks);
                 os.write(cipheredNumBlocks);
+                os.flush();
 
                 //partitioning in blocks of size 16 bytes to cipher
                 int i = 0;
@@ -67,6 +70,7 @@ public class Client {
                     byte[] first16 = Arrays.copyOfRange(inputBytes, i * 16, (i + 1) * 16);
                     byte[] cipheredLine = c.update(first16);
                     os.write(cipheredLine);
+                    os.flush();
                     i++;
                     lineSize = lineSize-16;
                 }
@@ -77,6 +81,7 @@ public class Client {
                 byte[] cipheredLine = c.doFinal(lastBlock);
 
                 os.write(cipheredLine);
+                os.flush();
 
             }
 
@@ -121,16 +126,6 @@ public class Client {
         c.init(c.ENCRYPT_MODE, secretKey, ivParams);
     }
 
-    byte[] toBytes(int i) {
-        byte[] result = new byte[16];
-
-        result[0] = (byte) (i >> 24);
-        result[1] = (byte) (i >> 16);
-        result[2] = (byte) (i >> 8);
-        result[3] = (byte) (i /* >> 0*/);
-
-        return result;
-    }
 
     public static void main(String args[]) {
         Client client = new Client("127.0.0.1", 5000);
