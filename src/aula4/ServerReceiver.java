@@ -9,7 +9,9 @@ import java.net.Socket;
 import java.nio.charset.Charset;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 public class ServerReceiver extends Thread{
 
@@ -48,7 +50,6 @@ public class ServerReceiver extends Thread{
 				
 				int l = 0;
 				l = is.read(cipheredNumBlocks);
-				System.out.println(cipheredNumBlocks);
 				if(l > 0) {
 					byte[] numBlocksBytes = c.doFinal(cipheredNumBlocks);
 					numBlocks = Integer.valueOf(bytetoString(numBlocksBytes));
@@ -92,9 +93,16 @@ public class ServerReceiver extends Thread{
 	
 	//cipher initialization
 	private void initCipher() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
-		
 		String key = "1234567890123456";
-		SecretKey secretKey = new SecretKeySpec(key.getBytes(), "AES");
+
+		byte[] derivedCipherKey = new byte[16];
+		try {
+			derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", 1);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
 		this.c = Cipher.getInstance(MODE);
 		while(true) {
 			if(is.available() != 0) {
@@ -104,6 +112,19 @@ public class ServerReceiver extends Thread{
 		}
 		IvParameterSpec ivParams = new IvParameterSpec(iv);
 		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
+	}
+
+	private byte[] getDerivedKey(byte[] sessionKey, String mode, int part) throws Exception {
+		MessageDigest md = MessageDigest.getInstance(mode);
+		byte[] bothKeys = md.digest(sessionKey);
+		switch (part) {
+			case 1:
+				return Arrays.copyOf(bothKeys, 16);
+			case 2:
+				return Arrays.copyOfRange(bothKeys, 17, 32);
+			default:
+				throw new Exception("illegal part");
+		}
 	}
 
 	private String bytetoString(byte[] bytes) {

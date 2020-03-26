@@ -6,10 +6,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -106,8 +103,16 @@ public class Client {
 
     //cipher initialization
     public void initCipher() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
-    	String key = "1234567890123456";
-        SecretKey secretKey = new SecretKeySpec(key.getBytes(), "AES");
+        String key = "1234567890123456";
+
+        byte[] derivedCipherKey = new byte[16];
+        try {
+            derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", 1);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
         c = Cipher.getInstance(MODE);
 
         //iv generation
@@ -118,6 +123,19 @@ public class Client {
 
     	os.write(ivParams.getIV());
         c.init(c.ENCRYPT_MODE, secretKey, ivParams);
+    }
+
+    private byte[] getDerivedKey(byte[] sessionKey, String mode, int part) throws Exception {
+        MessageDigest md = MessageDigest.getInstance(mode);
+        byte[] bothKeys = md.digest(sessionKey);
+        switch (part) {
+            case 1:
+                return Arrays.copyOf(bothKeys, 16);
+            case 2:
+                return Arrays.copyOfRange(bothKeys, 17, 32);
+            default:
+                throw new Exception("illegal part");
+        }
     }
 
 
