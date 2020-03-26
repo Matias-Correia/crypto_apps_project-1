@@ -49,16 +49,14 @@ public class Client {
                 String inputString = input.nextLine();
                 byte[] inputBytes = inputString.getBytes();
 
+                //if numBlocks isn't a multiple of 16, there's an extra block for the remaining bytes
+                //if numBlocks IS a multiple of 16, then there will be an extra block with just padding
                 int numBlocks;
-                if( inputString.length() % 16 == 0) numBlocks = (byte) (inputString.length() / 16);
-                else                                numBlocks = (byte) (inputString.length() / 16 + 1);
+                numBlocks = (byte) (inputString.length() / 16 + 1);
 
-
-                byte[] numBlocksBytes = new byte[16];
-                numBlocksBytes = String.valueOf(numBlocks).getBytes();
-                System.out.println(numBlocksBytes.length);
+                byte[] numBlocksBytes = String.valueOf(numBlocks).getBytes();
                 byte[] cipheredNumBlocks = c.doFinal(numBlocksBytes);
-                System.out.println(cipheredNumBlocks);
+
                 os.write(cipheredNumBlocks);
                 os.flush();
 
@@ -66,13 +64,14 @@ public class Client {
                 int i = 0;
                 int lineSize = inputString.length();
 
-                while(lineSize >= 16){
+                while(lineSize > 16){
                     byte[] first16 = Arrays.copyOfRange(inputBytes, i * 16, (i + 1) * 16);
                     byte[] cipheredLine = c.update(first16);
                     os.write(cipheredLine);
                     os.flush();
                     i++;
                     lineSize = lineSize-16;
+                    System.out.println(">ciphel:" + cipheredLine.length);
                 }
 
                 int remainder = inputBytes.length % 16;
@@ -84,8 +83,6 @@ public class Client {
                 os.flush();
 
             }
-
-
             catch(IOException i) {
                 try {
 					input.close();
@@ -101,12 +98,8 @@ public class Client {
                 e.printStackTrace();
             }
 
-
-
        }
 
-       
-       
     }
     
 
