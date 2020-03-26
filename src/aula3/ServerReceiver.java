@@ -48,7 +48,6 @@ public class ServerReceiver extends Thread{
 				
 				int l = 0;
 				l = is.read(cipheredNumBlocks);
-				System.out.println(cipheredNumBlocks);
 				if(l > 0) {
 					byte[] numBlocksBytes = c.doFinal(cipheredNumBlocks);
 					numBlocks = Integer.valueOf(bytetoString(numBlocksBytes));
