@@ -22,6 +22,10 @@ public class ServerReceiver extends Thread{
 	private InputStream is = null;
 	private static final String MODE = "AES/CBC/PKCS5Padding";
 	private byte[] iv = new byte[16];
+	private byte[] derivedCipherKey = new byte[16];
+	private byte[] derivedMACKey = new byte[16];
+	
+	
 
 	ServerReceiver(Socket socket, int id){
 		// establish a connection
@@ -44,9 +48,14 @@ public class ServerReceiver extends Thread{
 		byte[] cipheredLine = new byte[16];
 		int numBlocks = 0;
 		byte[] cipheredNumBlocks = new byte[16];
+		byte[] receivedMAC = new byte[32];
 			
 		while (true){
 			try{
+				
+				int m = 0;
+				m = is.read(receivedMAC);
+				
 				
 				int l = 0;
 				l = is.read(cipheredNumBlocks);
@@ -54,37 +63,41 @@ public class ServerReceiver extends Thread{
 					byte[] numBlocksBytes = c.doFinal(cipheredNumBlocks);
 					numBlocks = Integer.valueOf(bytetoString(numBlocksBytes));
 				}
-				
-				
+				byte[] decipheredLine = null;
+				StringBuilder x = new StringBuilder("");
 				for(int i=0; i<numBlocks; i++){
-					String x;
+					
 					l = is.read(cipheredLine);
-
+					
 					if(l > 0){
 
 						if(numBlocks == 1){
 							//first is last
-							byte[] decipheredLine = c.doFinal(cipheredLine);
-							x = new String(decipheredLine, Charset.defaultCharset());
+							decipheredLine = c.doFinal(cipheredLine);
 						}
 						else if(i<numBlocks - 1){
 							//first isn't last or middle block
-							byte[] decipheredLine = c.update(cipheredLine);
-							x = new String(decipheredLine, Charset.defaultCharset());
-						}
-						else{
+							decipheredLine = c.update(cipheredLine);
+						}else{
 							//last block
-							byte[] decipheredLine = c.doFinal(cipheredLine);
-							x = new String(decipheredLine, Charset.defaultCharset());
+							decipheredLine = c.doFinal(cipheredLine);
 						}
-
-						System.out.println("-->"  + x);
-					}
+						String aux = new String(decipheredLine, Charset.defaultCharset());
+						x.append(aux);
+					}					
 				}
+				String message = x.toString();
+				byte[] messageb = message.getBytes();
+				System.out.println("-->"  + x.toString());
+				System.out.println(CheckMAC(messageb, receivedMAC));
 
 			}
 			catch(IOException | BadPaddingException | IllegalBlockSizeException i){
-				i.printStackTrace();
+				try {
+					is.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 
 		}
@@ -95,9 +108,10 @@ public class ServerReceiver extends Thread{
 	private void initCipher() throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
 		String key = "1234567890123456";
 
-		byte[] derivedCipherKey = new byte[16];
+		
 		try {
 			derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", 1);
+			derivedMACKey = getDerivedKey(key.getBytes(), "SHA-256", 2);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -126,6 +140,22 @@ public class ServerReceiver extends Thread{
 				throw new Exception("illegal part");
 		}
 	}
+	
+	private boolean CheckMAC(byte[] message, byte[] receivedmac) {
+    	byte[] hmacSha256 = null; 
+    	try {
+    		Mac mac = Mac.getInstance("HmacSHA256");
+    	    SecretKeySpec secretKeySpec = new SecretKeySpec(derivedMACKey, "HmacSHA256");
+    	    mac.init(secretKeySpec);
+    	    hmacSha256 = mac.doFinal(message);
+    	} catch (Exception e) {
+    		throw new RuntimeException("Failed to calculate hmac-sha256", e);
+    	}
+    	if(Arrays.equals(receivedmac, hmacSha256)) {
+    		return true;
+    	}
+    	return false;
+    }
 
 	private String bytetoString(byte[] bytes) {
 		StringBuilder value = new StringBuilder();

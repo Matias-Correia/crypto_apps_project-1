@@ -18,6 +18,8 @@ public class Client {
     private Cipher c;
     private OutputStream os             = null;
     private byte[] iv = new byte[16];
+    private byte[] derivedCipherKey = new byte[16];
+    private  byte[] derivedMACKey = new byte[16];
     
     // constructor to put ip address and port
     public Client(String address, int port) {
@@ -46,7 +48,12 @@ public class Client {
                 // string to read message from input
                 String inputString = input.nextLine();
                 byte[] inputBytes = inputString.getBytes();
-
+                byte[] mac = initMAC(inputBytes);
+                
+                //send HMAC
+                os.write(mac);
+                os.flush();
+                
                 //if numBlocks isn't a multiple of 16, there's an extra block for the remaining bytes
                 //if numBlocks IS a multiple of 16, then there will be an extra block with just padding
                 int numBlocks;
@@ -69,7 +76,6 @@ public class Client {
                     os.flush();
                     i++;
                     lineSize = lineSize-16;
-                    System.out.println(">ciphel:" + cipheredLine.length);
                 }
 
                 int remainder = inputBytes.length % 16;
@@ -105,9 +111,10 @@ public class Client {
     public void initCipher() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
         String key = "1234567890123456";
 
-        byte[] derivedCipherKey = new byte[16];
+       
         try {
             derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", 1);
+            derivedMACKey = getDerivedKey(key.getBytes(), "SHA-256", 2);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -136,6 +143,19 @@ public class Client {
             default:
                 throw new Exception("illegal part");
         }
+    }
+    
+    private byte[] initMAC(byte[] message) {
+    	byte[] hmacSha256 = null; 
+    	try {
+    		Mac mac = Mac.getInstance("HmacSHA256");
+    	    SecretKeySpec secretKeySpec = new SecretKeySpec(derivedMACKey, "HmacSHA256");
+    	    mac.init(secretKeySpec);
+    	    hmacSha256 = mac.doFinal(message);
+    	} catch (Exception e) {
+    		throw new RuntimeException("Failed to calculate hmac-sha256", e);
+    	}
+    	return hmacSha256;
     }
 
 
