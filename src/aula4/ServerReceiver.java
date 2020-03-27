@@ -109,12 +109,9 @@ public class ServerReceiver extends Thread{
 		String key = "1234567890123456";
 
 		
-		try {
-			derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", 1);
-			derivedMACKey = getDerivedKey(key.getBytes(), "SHA-256", 2);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", '1');
+		derivedMACKey = getDerivedKey(key.getBytes(), "SHA-256", '2');
+
 
 		SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
 		this.c = Cipher.getInstance(MODE);
@@ -128,17 +125,15 @@ public class ServerReceiver extends Thread{
 		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
 	}
 
-	private byte[] getDerivedKey(byte[] sessionKey, String mode, int part) throws Exception {
+	private byte[] getDerivedKey(byte[] sessionKey, String mode, char c) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance(mode);
-		byte[] bothKeys = md.digest(sessionKey);
-		switch (part) {
-			case 1:
-				return Arrays.copyOf(bothKeys, 16);
-			case 2:
-				return Arrays.copyOfRange(bothKeys, 17, 32);
-			default:
-				throw new Exception("illegal part");
+		byte[] sessionAndChar = new byte[sessionKey.length + 1];
+		for(int i=0; i<sessionKey.length; i++){
+			sessionAndChar[i] = sessionKey[i];
 		}
+		//adding the char to the last position in the array
+		sessionAndChar[sessionKey.length] = (byte) c;
+		return  md.digest(sessionAndChar);
 	}
 	
 	private boolean CheckMAC(byte[] message, byte[] receivedmac) {
