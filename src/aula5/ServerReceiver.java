@@ -6,10 +6,13 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.nio.charset.Charset;
 import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 
 public class ServerReceiver extends Thread{
@@ -19,6 +22,7 @@ public class ServerReceiver extends Thread{
 	private Server s = Server.getInstance();
 	private Cipher c;
 	private InputStream is = null;
+	private OutputStream os = null;
 	private static final String MODE = "AES/CBC/PKCS5Padding";
 	private byte[] iv = new byte[16];
 	private byte[] derivedCipherKey = new byte[16];
@@ -37,7 +41,8 @@ public class ServerReceiver extends Thread{
 
 		try {
 			is = socket.getInputStream();
-			initCipher();
+			os = socket.getOutputStream();
+			initCipher(diffiehellman());
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
 				| InvalidAlgorithmParameterException | IOException e) {
 			e.printStackTrace();
@@ -47,31 +52,6 @@ public class ServerReceiver extends Thread{
 	
 	@Override
 	public void run() {
-		BigInteger intP = new BigInteger(hexp, 16);
-		BigInteger intQ = new BigInteger(hexq, 16);
-		BigInteger intG = new BigInteger(hexg, 16);
-		DHParameterSpec dhParams = new DHParameterSpec(intP, intG);
-		System.out.println(Security.getProviders());
-
-		KeyPairGenerator keyGen = null;
-		KeyAgreement keyAgree = null;
-		try {
-			keyGen = KeyPairGenerator.getInstance("DH", "BC");
-			keyGen.initialize(dhParams, new SecureRandom());
-			keyAgree = KeyAgreement.getInstance("DH", "BC");
-			KeyPair aPair = keyGen.generateKeyPair();
-			keyAgree.init(aPair.getPrivate());
-			PublicKey aPublicKey = aPair.getPublic();
-
-			//os.write(aPublicKey.getEncoded());
-			//os.flush();
-
-			//keyAgree.doPhase(bPublicKey, true);
-
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | InvalidKeyException e) {
-			e.printStackTrace();
-		}
-
 
 
 		//12345678901234567890
@@ -153,6 +133,45 @@ public class ServerReceiver extends Thread{
 		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
 	}
 
+	private KeyAgreement diffiehellman() {
+		BigInteger intP = new BigInteger(hexp, 16);
+		BigInteger intQ = new BigInteger(hexq, 16);
+		BigInteger intG = new BigInteger(hexg, 16);
+		DHParameterSpec dhParams = new DHParameterSpec(intP, intG);
+		System.out.println(Security.getProviders());
+
+		KeyPairGenerator keyGen = null;
+		KeyAgreement keyAgree = null;
+		try {
+			keyGen = KeyPairGenerator.getInstance("DH", "BC");
+			keyGen.initialize(dhParams, new SecureRandom());
+			keyAgree = KeyAgreement.getInstance("DH", "BC");
+			KeyPair aPair = keyGen.generateKeyPair();
+			keyAgree.init(aPair.getPrivate());
+			PublicKey aPublicKey = aPair.getPublic();
+			
+			
+			byte[] bpk = null;
+			int r = is.read();
+			KeyFactory kf = KeyFactory.getInstance("DH");
+	        PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bpk));
+			
+	        
+			os.write(aPublicKey.getEncoded());
+			os.flush();
+			
+			
+			keyAgree.doPhase(bPublicKey, true);
+			
+			return keyAgree;
+			
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | InvalidKeyException | InvalidKeySpecException | IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	
 	private byte[] getDerivedKey(byte[] sessionKey, String mode, char c) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance(mode);
 		byte[] sessionAndChar = new byte[sessionKey.length + 1];
