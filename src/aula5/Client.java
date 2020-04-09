@@ -6,10 +6,13 @@ import javax.crypto.spec.DHPublicKeySpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -20,6 +23,7 @@ public class Client {
     private static final String MODE    = "AES/CBC/PKCS5Padding";
     private Cipher c;
     private OutputStream os             = null;
+    private InputStream is 				= null;
     private byte[] iv = new byte[16];
     private byte[] derivedCipherKey;
     private  byte[] derivedMACKey;
@@ -34,6 +38,7 @@ public class Client {
         try {
             socket = new Socket(address, port);
             os = socket.getOutputStream();
+            is = socket.getInputStream();
             System.out.println("Connected");
 
             try {
@@ -53,7 +58,13 @@ public class Client {
                 PublicKey aPublicKey = aPair.getPublic();
                 os.write(aPublicKey.getEncoded());
                 os.flush();
-
+                
+                byte[] bPK = null;
+                
+                int r = is.read(bPK);
+                KeyFactory kf = KeyFactory.getInstance("DH");
+                PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bPK));
+                
                 //keyAgree.doPhase(bPublicKey, true);
 
 
@@ -62,7 +73,10 @@ public class Client {
 				e.printStackTrace();
 			} catch (NoSuchProviderException e) {
                 e.printStackTrace();
-            }
+            } catch (InvalidKeySpecException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
             // takes input from terminal
             input  = new Scanner(System.in);
         }
