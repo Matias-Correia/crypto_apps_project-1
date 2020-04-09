@@ -18,8 +18,8 @@ public class Client {
     private Cipher c;
     private OutputStream os             = null;
     private byte[] iv = new byte[16];
-    private byte[] derivedCipherKey;
-    private  byte[] derivedMACKey;
+    private byte[] derivedCipherKey = new byte[16];
+    private  byte[] derivedMACKey = new byte[16];
     
     // constructor to put ip address and port
     public Client(String address, int port) {
@@ -111,8 +111,13 @@ public class Client {
     public void initCipher() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
         String key = "1234567890123456";
 
-        derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", '1');
-        derivedMACKey = getDerivedKey(key.getBytes(), "SHA-256", '2');
+       
+        try {
+            derivedCipherKey = getDerivedKey(key.getBytes(), "SHA-256", 1);
+            derivedMACKey = getDerivedKey(key.getBytes(), "SHA-256", 2);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
         c = Cipher.getInstance(MODE);
@@ -127,15 +132,17 @@ public class Client {
         c.init(c.ENCRYPT_MODE, secretKey, ivParams);
     }
 
-    private byte[] getDerivedKey(byte[] sessionKey, String mode, char c) throws NoSuchAlgorithmException {
+    private byte[] getDerivedKey(byte[] sessionKey, String mode, int part) throws Exception {
         MessageDigest md = MessageDigest.getInstance(mode);
-        byte[] sessionAndChar = new byte[sessionKey.length + 1];
-        for(int i=0; i<sessionKey.length; i++){
-            sessionAndChar[i] = sessionKey[i];
+        byte[] bothKeys = md.digest(sessionKey);
+        switch (part) {
+            case 1:
+                return Arrays.copyOf(bothKeys, 16);
+            case 2:
+                return Arrays.copyOfRange(bothKeys, 17, 32);
+            default:
+                throw new Exception("illegal part");
         }
-        //adding the char to the last position in the array
-        sessionAndChar[sessionKey.length] = (byte) c;
-        return  md.digest(sessionAndChar);
     }
     
     private byte[] initMAC(byte[] message) {
