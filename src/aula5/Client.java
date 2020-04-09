@@ -45,7 +45,7 @@ public class Client {
             
             	initCipher(diffieHellman());
             	
-			} catch (InvalidKeyException | NoSuchProviderException | InvalidKeySpecException | InvalidAlgorithmParameterException e) {
+			} catch (InvalidKeyException | InvalidKeySpecException | InvalidAlgorithmParameterException e) {
 				e.printStackTrace();
 			} 
             // takes input from terminal
@@ -141,30 +141,29 @@ public class Client {
         c.init(c.ENCRYPT_MODE, secretKey, ivParams);
     }
     
-    private KeyAgreement diffieHellman() throws IOException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
+    private KeyAgreement diffieHellman() throws IOException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeySpecException {
         BigInteger intP = new BigInteger(hexp, 16);
         BigInteger intQ = new BigInteger(hexq, 16);
         BigInteger intG = new BigInteger(hexg, 16);
         DHParameterSpec dhParams = new DHParameterSpec(intP, intG);
-        System.out.println(Security.getProviders());
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "BC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH");
         keyGen.initialize(dhParams, new SecureRandom());
 
-        KeyAgreement keyAgree = KeyAgreement.getInstance("DH", "BC");
+        KeyAgreement keyAgree = KeyAgreement.getInstance("DH");
         KeyPair aPair = keyGen.generateKeyPair();
 
         keyAgree.init(aPair.getPrivate());
         PublicKey aPublicKey = aPair.getPublic();
         os.write(aPublicKey.getEncoded());
         os.flush();
-        
-        byte[] bPK = null;
+        System.out.println(aPublicKey.getFormat());
+        byte[] bPK = new byte[16];
         
         int r = is.read(bPK);
         KeyFactory kf = KeyFactory.getInstance("DH");
         PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bPK));
-        
+
         keyAgree.doPhase(bPublicKey, true);
         
         return keyAgree;
@@ -192,19 +191,6 @@ public class Client {
     		throw new RuntimeException("Failed to calculate hmac-sha256", e);
     	}
     	return hmacSha256;
-    }
-
-    public static void createSpecificKey(BigInteger p, BigInteger g) throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DiffieHellman");
-
-        DHParameterSpec param = new DHParameterSpec(p, g);
-        kpg.initialize(param);
-        KeyPair kp = kpg.generateKeyPair();
-
-        KeyFactory kfactory = KeyFactory.getInstance("DiffieHellman");
-
-        DHPublicKeySpec kspec = (DHPublicKeySpec) kfactory.getKeySpec(kp.getPublic(),
-                DHPublicKeySpec.class);
     }
 
 

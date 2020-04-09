@@ -138,21 +138,21 @@ public class ServerReceiver extends Thread{
 		BigInteger intQ = new BigInteger(hexq, 16);
 		BigInteger intG = new BigInteger(hexg, 16);
 		DHParameterSpec dhParams = new DHParameterSpec(intP, intG);
-		System.out.println(Security.getProviders());
 
 		KeyPairGenerator keyGen = null;
 		KeyAgreement keyAgree = null;
 		try {
-			keyGen = KeyPairGenerator.getInstance("DH", "BC");
+			keyGen = KeyPairGenerator.getInstance("DH");
 			keyGen.initialize(dhParams, new SecureRandom());
-			keyAgree = KeyAgreement.getInstance("DH", "BC");
+			keyAgree = KeyAgreement.getInstance("DH");
 			KeyPair aPair = keyGen.generateKeyPair();
 			keyAgree.init(aPair.getPrivate());
 			PublicKey aPublicKey = aPair.getPublic();
-			
-			
-			byte[] bpk = null;
-			int r = is.read();
+			System.out.println(aPublicKey.getFormat());
+
+
+			byte[] bpk = new byte[16];
+			int r = is.read(bpk);
 			KeyFactory kf = KeyFactory.getInstance("DH");
 	        PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bpk));
 			
@@ -165,7 +165,7 @@ public class ServerReceiver extends Thread{
 			
 			return keyAgree;
 			
-		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | InvalidKeyException | InvalidKeySpecException | IOException e) {
+		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | InvalidKeyException | InvalidKeySpecException | IOException e) {
 			e.printStackTrace();
 		}
 		return null;
