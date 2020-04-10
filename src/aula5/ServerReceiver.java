@@ -115,10 +115,10 @@ public class ServerReceiver extends Thread{
 	}
 	
 	//cipher initialization
-	private void initCipher(KeyAgreement keyAgree) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
+	private void initCipher(byte[] secret) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
 
-		derivedCipherKey = getDerivedKey(keyAgree.generateSecret(), "SHA-256", '1');
-		derivedMACKey = getDerivedKey(keyAgree.generateSecret(), "SHA-256", '2');
+		derivedCipherKey = getDerivedKey(secret, "SHA-256", '1');
+		derivedMACKey = getDerivedKey(secret, "SHA-256", '2');
 
 
 		SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
@@ -133,7 +133,7 @@ public class ServerReceiver extends Thread{
 		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
 	}
 
-	private KeyAgreement diffiehellman() {
+	private byte[] diffiehellman() {
 		BigInteger intP = new BigInteger(hexp, 16);
 		BigInteger intQ = new BigInteger(hexq, 16);
 		BigInteger intG = new BigInteger(hexg, 16);
@@ -148,11 +148,12 @@ public class ServerReceiver extends Thread{
 			KeyPair aPair = keyGen.generateKeyPair();
 			keyAgree.init(aPair.getPrivate());
 			PublicKey aPublicKey = aPair.getPublic();
-			System.out.println(aPublicKey.getFormat());
+	
 
 
-			byte[] bpk = new byte[16];
+			byte[] bpk = new byte[1583];
 			int r = is.read(bpk);
+		
 			KeyFactory kf = KeyFactory.getInstance("DH");
 	        PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bpk));
 			
@@ -162,8 +163,10 @@ public class ServerReceiver extends Thread{
 			
 			
 			keyAgree.doPhase(bPublicKey, true);
+		
+			byte[] secret = keyAgree.generateSecret();
 			
-			return keyAgree;
+			return secret;
 			
 		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | InvalidKeyException | InvalidKeySpecException | IOException e) {
 			e.printStackTrace();

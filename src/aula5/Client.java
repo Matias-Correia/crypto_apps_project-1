@@ -122,11 +122,11 @@ public class Client {
     
 
     //cipher initialization
-    public void initCipher(KeyAgreement keyAgree) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
+    public void initCipher(byte[] secret) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
         //String key = "1234567890123456";
 
-        derivedCipherKey = getDerivedKey(keyAgree.generateSecret(), "SHA-256", '1');
-        derivedMACKey = getDerivedKey(keyAgree.generateSecret(), "SHA-256", '2');
+        derivedCipherKey = getDerivedKey(secret, "SHA-256", '1');
+        derivedMACKey = getDerivedKey(secret, "SHA-256", '2');
 
         SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
         c = Cipher.getInstance(MODE);
@@ -141,7 +141,7 @@ public class Client {
         c.init(c.ENCRYPT_MODE, secretKey, ivParams);
     }
     
-    private KeyAgreement diffieHellman() throws IOException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeySpecException {
+    private byte[] diffieHellman() throws IOException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeySpecException {
         BigInteger intP = new BigInteger(hexp, 16);
         BigInteger intQ = new BigInteger(hexq, 16);
         BigInteger intG = new BigInteger(hexg, 16);
@@ -150,23 +150,28 @@ public class Client {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH");
         keyGen.initialize(dhParams, new SecureRandom());
 
+        
+        
         KeyAgreement keyAgree = KeyAgreement.getInstance("DH");
         KeyPair aPair = keyGen.generateKeyPair();
 
         keyAgree.init(aPair.getPrivate());
         PublicKey aPublicKey = aPair.getPublic();
+   
         os.write(aPublicKey.getEncoded());
         os.flush();
         System.out.println(aPublicKey.getFormat());
-        byte[] bPK = new byte[16];
+        byte[] bPK = new byte[1583];
         
         int r = is.read(bPK);
+       
         KeyFactory kf = KeyFactory.getInstance("DH");
         PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bPK));
 
         keyAgree.doPhase(bPublicKey, true);
+        byte[] secret = keyAgree.generateSecret();
         
-        return keyAgree;
+        return secret;
     }
 
     private byte[] getDerivedKey(byte[] sessionKey, String mode, char c) throws NoSuchAlgorithmException {
