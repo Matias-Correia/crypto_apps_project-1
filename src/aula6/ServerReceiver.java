@@ -42,9 +42,12 @@ public class ServerReceiver extends Thread{
 		try {
 			is = socket.getInputStream();
 			os = socket.getOutputStream();
-			initCipher(diffiehellman());
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
-				| InvalidAlgorithmParameterException | IOException e) {
+			diffiehellman();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
 			e.printStackTrace();
 		}
 
@@ -113,27 +116,40 @@ public class ServerReceiver extends Thread{
 		}
 
 	}
-	
+
 	//cipher initialization
-	private void initCipher(byte[] secret) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
+	private void initCipher(byte[] secret, String encOrDec) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
 
 		derivedCipherKey = getDerivedKey(secret, "SHA-256", '1');
 		derivedMACKey = getDerivedKey(secret, "SHA-256", '2');
-
-
 		SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
 		this.c = Cipher.getInstance(MODE);
-		while(true) {
-			if(is.available() != 0) {
-				is.read(iv);
-				break;
-			}
+
+		if(encOrDec.compareTo("ENCRYPT") == 0){
+			//iv generation
+			SecureRandom randomSecureRandom = new SecureRandom();
+			iv = new byte[c.getBlockSize()];
+			randomSecureRandom.nextBytes(iv);
+			IvParameterSpec ivParams = new IvParameterSpec(iv);
+
+			os.write(ivParams.getIV());
+			c.init(c.ENCRYPT_MODE, secretKey, ivParams);
 		}
-		IvParameterSpec ivParams = new IvParameterSpec(iv);
-		c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
+		else if(encOrDec.compareTo("DECRYPT") == 0){
+			while(true) {
+				if(is.available() != 0) {
+					is.read(iv);
+					break;
+				}
+			}
+			IvParameterSpec ivParams = new IvParameterSpec(iv);
+			c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
+		}
+		else throw new NoSuchAlgorithmException("Cipher cannot be initiatied with that mode");
+		return;
 	}
 
-	private byte[] diffiehellman() {
+	private void diffiehellman() throws BadPaddingException, IllegalBlockSizeException {
 		BigInteger intP = new BigInteger(hexp, 16);
 		BigInteger intQ = new BigInteger(hexq, 16);
 		BigInteger intG = new BigInteger(hexg, 16);
@@ -145,33 +161,74 @@ public class ServerReceiver extends Thread{
 			keyGen = KeyPairGenerator.getInstance("DH");
 			keyGen.initialize(dhParams, new SecureRandom());
 			keyAgree = KeyAgreement.getInstance("DH");
-			KeyPair aPair = keyGen.generateKeyPair();
-			keyAgree.init(aPair.getPrivate());
-			PublicKey aPublicKey = aPair.getPublic();
+			KeyPair bPair = keyGen.generateKeyPair();
+			keyAgree.init(bPair.getPrivate());
+			PublicKey bPublicKey = bPair.getPublic();
 	
 
 
-			byte[] bpk = new byte[1583];
-			int r = is.read(bpk);
+			byte[] apk = new byte[1583];
+			int r = is.read(apk);
 		
 			KeyFactory kf = KeyFactory.getInstance("DH");
-	        PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bpk));
-			
-	        
-			os.write(aPublicKey.getEncoded());
+	        PublicKey aPublicKey = kf.generatePublic(new X509EncodedKeySpec(apk));
+
+			keyAgree.doPhase(aPublicKey, true);
+
+			byte[] secret = keyAgree.generateSecret(); //obter o K (chave acordada via diffie-hellman)
+
+			os.write(bPublicKey.getEncoded()); //envio do g^y
 			os.flush();
-			
-			
-			keyAgree.doPhase(bPublicKey, true);
-		
-			byte[] secret = keyAgree.generateSecret();
-			
-			return secret;
-			
-		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | InvalidKeyException | InvalidKeySpecException | IOException e) {
+
+			//
+			//Creating KeyPair generator object
+			KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
+
+			//Initializing the key pair generator
+			keyPairGen.initialize(1024);
+
+			//Generate the pair of keys
+			KeyPair pair = keyPairGen.generateKeyPair();
+			PublicKey publicKey = pair.getPublic();
+
+			System.out.println("pub key:" + publicKey.toString());
+			System.out.println("priv key:" + pair.getPrivate().toString());
+
+			//Getting the private key from the key pair
+			PrivateKey privKey = pair.getPrivate();
+			//
+
+			//criar SigB(g^y, g^x)
+			Signature signature = Signature.getInstance("SHA256withRSA");
+			signature.initSign(privKey);
+			signature.update(bPublicKey.getEncoded());
+			signature.update(aPublicKey.getEncoded());
+			byte[] sign = signature.sign();
+
+
+			//
+			signature.initVerify(publicKey);
+			signature.update(bPublicKey.getEncoded());
+			signature.update(aPublicKey.getEncoded());
+			System.out.println(signature.verify(sign));
+			//
+
+			System.out.println("size:" + sign.length);
+
+
+			initCipher(secret, "ENCRYPT");
+			byte[] cipheredSignature = c.doFinal(sign);
+
+			os.write(cipheredSignature); //envio do Ek( SigB (g^y, g^x))
+			os.flush();
+
+
+			is.read(); //obter o Ek(SigA(g^x, g^y))
+
+
+		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | InvalidKeyException | InvalidKeySpecException | IOException | NoSuchPaddingException | SignatureException e) {
 			e.printStackTrace();
 		}
-		return null;
 	}
 	
 	

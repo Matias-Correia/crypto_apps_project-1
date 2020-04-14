@@ -11,8 +11,7 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.security.*;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
+import java.security.spec.*;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -42,12 +41,18 @@ public class Client {
             System.out.println("Connected");
 
             try {
-            
-            	initCipher(diffieHellman());
+
+                diffieHellman();
             	
 			} catch (InvalidKeyException | InvalidKeySpecException | InvalidAlgorithmParameterException e) {
 				e.printStackTrace();
-			} 
+			} catch (BadPaddingException e) {
+                e.printStackTrace();
+            } catch (IllegalBlockSizeException e) {
+                e.printStackTrace();
+            } catch (SignatureException e) {
+                e.printStackTrace();
+            }
             // takes input from terminal
             input  = new Scanner(System.in);
         }
@@ -119,29 +124,41 @@ public class Client {
        }
 
     }
-    
+
 
     //cipher initialization
-    public void initCipher(byte[] secret) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IOException {
-        //String key = "1234567890123456";
+    private void initCipher(byte[] secret, String encOrDec) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, InvalidAlgorithmParameterException {
 
         derivedCipherKey = getDerivedKey(secret, "SHA-256", '1');
         derivedMACKey = getDerivedKey(secret, "SHA-256", '2');
-
         SecretKey secretKey = new SecretKeySpec(derivedCipherKey, "AES");
-        c = Cipher.getInstance(MODE);
+        this.c = Cipher.getInstance(MODE);
 
-        //iv generation
-    	SecureRandom randomSecureRandom = new SecureRandom();
-    	iv = new byte[c.getBlockSize()];
-    	randomSecureRandom.nextBytes(iv);
-    	IvParameterSpec ivParams = new IvParameterSpec(iv);
+        if(encOrDec.compareTo("ENCRYPT") == 0){
+            //iv generation
+            SecureRandom randomSecureRandom = new SecureRandom();
+            iv = new byte[c.getBlockSize()];
+            randomSecureRandom.nextBytes(iv);
+            IvParameterSpec ivParams = new IvParameterSpec(iv);
 
-    	os.write(ivParams.getIV());
-        c.init(c.ENCRYPT_MODE, secretKey, ivParams);
+            os.write(ivParams.getIV());
+            c.init(c.ENCRYPT_MODE, secretKey, ivParams);
+        }
+        else if(encOrDec.compareTo("DECRYPT") == 0){
+            while(true) {
+                if(is.available() != 0) {
+                    is.read(iv);
+                    break;
+                }
+            }
+            IvParameterSpec ivParams = new IvParameterSpec(iv);
+            c.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
+        }
+        else throw new NoSuchAlgorithmException("Cipher cannot be initiatied with that mode");
+        return;
     }
     
-    private byte[] diffieHellman() throws IOException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeySpecException {
+    private void diffieHellman() throws IOException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, SignatureException {
         BigInteger intP = new BigInteger(hexp, 16);
         BigInteger intQ = new BigInteger(hexq, 16);
         BigInteger intG = new BigInteger(hexg, 16);
@@ -158,9 +175,8 @@ public class Client {
         keyAgree.init(aPair.getPrivate());
         PublicKey aPublicKey = aPair.getPublic();
    
-        os.write(aPublicKey.getEncoded());
+        os.write(aPublicKey.getEncoded()); //envio de g^x
         os.flush();
-        System.out.println(aPublicKey.getFormat());
         byte[] bPK = new byte[1583];
         
         int r = is.read(bPK);
@@ -169,9 +185,26 @@ public class Client {
         PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bPK));
 
         keyAgree.doPhase(bPublicKey, true);
-        byte[] secret = keyAgree.generateSecret();
-        
-        return secret;
+        byte[] secret = keyAgree.generateSecret(); //obter o K (chave acordada via diffie-hellman)
+
+
+        initCipher(secret, "DECRYPT");
+        byte[] diffieResponse = new byte[128];
+        r = is.read(diffieResponse); //obter o Ek( SigB (g^y, g^x))
+        byte[] sign = c.doFinal(diffieResponse);
+
+        /*
+        Signature signature = Signature.getInstance("SHA256withRSA");
+        signature.initVerify(publicKey);
+        signature.update(bPublicKey.getEncoded());
+        signature.update(aPublicKey.getEncoded());
+        System.out.println(signature.verify(sign));
+        */
+
+
+
+        //os.write(); //envio de Ek(SigA(g^x, g^y))
+        os.flush();
     }
 
     private byte[] getDerivedKey(byte[] sessionKey, String mode, char c) throws NoSuchAlgorithmException {
@@ -196,6 +229,13 @@ public class Client {
     		throw new RuntimeException("Failed to calculate hmac-sha256", e);
     	}
     	return hmacSha256;
+    }
+
+    private byte[] keyRead() throws NoSuchAlgorithmException {
+        //KeyFactory kf = KeyFactory.getInstance("RSA");
+        //AlgorithmParameterSpec params =
+        //RSAKeyGenParameterSpec rsaKeyGen = new RSAKeyGenParameterSpec()
+        DSAParameterSpec params = new DSAParameterSpec()
     }
 
 
