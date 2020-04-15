@@ -196,7 +196,7 @@ public class ServerReceiver extends Thread{
 			os.write(bPublicKey.getEncoded()); //envio do g^y
 			os.flush();
 
-			byte[] privKey = readkey("ServerSk.key");
+			byte[] privKey = readkey("ServerSK.key");
 			/* Gerar private key. */
 			PKCS8EncodedKeySpec ks = new PKCS8EncodedKeySpec(privKey);
 			KeyFactory privatekey = KeyFactory.getInstance("RSA");
@@ -225,9 +225,9 @@ public class ServerReceiver extends Thread{
 			byte[] decryptedstep3 = c.doFinal(step3);
 			
 			
-			byte[] publiKey = readkey("ClientPk.key");
+			byte[] publiKey = readkey("ClientPK.key");
 			/* Gerar public key. */
-			X509EncodedKeySpec cs = new X509EncodedKeySpec(privKey);
+			X509EncodedKeySpec cs = new X509EncodedKeySpec(publiKey);
 			KeyFactory cpk = KeyFactory.getInstance("RSA");
 			PublicKey clientPublicKey = cpk.generatePublic(cs);
 			

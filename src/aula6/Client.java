@@ -206,7 +206,7 @@ public class Client {
 
         //verificar assinatura
         
-        byte[] bytesPk = readkey("ServerPk.key");
+        byte[] bytesPk = readkey("ServerPK.key");
         X509EncodedKeySpec ks = new X509EncodedKeySpec(bytesPk);
         KeyFactory kfRSA = KeyFactory.getInstance("RSA");
         PublicKey serverPublicKey = kfRSA.generatePublic(ks);
@@ -219,7 +219,7 @@ public class Client {
         
         System.out.println("step3");
         //criação de Ek(SigA(g^x, g^y))
-        byte[] bytesSk = readkey("ClientSk.key");
+        byte[] bytesSk = readkey("ClientSK.key");
         PKCS8EncodedKeySpec cs = new PKCS8EncodedKeySpec(bytesSk);
         PrivateKey clientPrivateKey = kfRSA.generatePrivate(cs);
         signature.initSign(clientPrivateKey);
