@@ -167,61 +167,58 @@ public class Client {
     }
     
     private void diffieHellman() throws IOException, InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, SignatureException {
-        BigInteger intP = new BigInteger(hexp, 16);
-        BigInteger intQ = new BigInteger(hexq, 16);
-        BigInteger intG = new BigInteger(hexg, 16);
-        DHParameterSpec dhParams = new DHParameterSpec(intP, intG);
 
+        // STEP 1 OF STATION-TO-STATION DIFFIE-HELLMAN
+        BigInteger intP = new BigInteger(hexp, 16);
+        BigInteger intG = new BigInteger(hexg, 16);
+
+        DHParameterSpec dhParams = new DHParameterSpec(intP, intG);
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH");
         keyGen.initialize(dhParams, new SecureRandom());
-
-        
-        
         KeyAgreement keyAgree = KeyAgreement.getInstance("DH");
         KeyPair aPair = keyGen.generateKeyPair();
-
         keyAgree.init(aPair.getPrivate());
         PublicKey aPublicKey = aPair.getPublic();
-        os.write(aPublicKey.getEncoded()); //envio de g^x
+
+        os.write(aPublicKey.getEncoded()); //sending g^x
         os.flush();
+
+
+        //STEP 2 OF STATION-TO-STATION DIFFIE-HELLMAN
         byte[] bPK = new byte[1583];
-        
         int r = is.read(bPK);
-       
         KeyFactory kf = KeyFactory.getInstance("DH");
         PublicKey bPublicKey = kf.generatePublic(new X509EncodedKeySpec(bPK));
-
         keyAgree.doPhase(bPublicKey, true);
-        byte[] secret = keyAgree.generateSecret(); //obter o K (chave acordada via diffie-hellman)
+        byte[] secret = keyAgree.generateSecret(); //generating the agreed key (obtaining g^y)
+
+        initCipherClient(secret);//cipherInit
         
-        //CipherInit
-        initCipherClient(secret);
-        
-        //
         cipherModeChange("DECRYPT");
         byte[] diffieResponse = new byte[272];
-        r = is.read(diffieResponse); //obter o Ek( SigB (g^y, g^x))
-       
+        r = is.read(diffieResponse); //obtaining Ek( SigB (g^y, g^x))
         byte[] sign = c.doFinal(diffieResponse);
 
-        //verificar assinatura
-        
         byte[] bytesPk = readkey("ServerPK.key");
         X509EncodedKeySpec ks = new X509EncodedKeySpec(bytesPk);
         KeyFactory kfRSA = KeyFactory.getInstance("RSA");
         PublicKey serverPublicKey = kfRSA.generatePublic(ks);
-        
+        //verifying the signature
         Signature signature = Signature.getInstance("SHA256withRSA");
         signature.initVerify(serverPublicKey);
         signature.update(bPublicKey.getEncoded());
         signature.update(aPublicKey.getEncoded());
+
         System.out.println(signature.verify(sign));
-        
+
+
+        //STEP 3 OF STATION-TO-STATION DIFFIE-HELLMAN
         System.out.println("step3");
-        //criação de Ek(SigA(g^x, g^y))
         byte[] bytesSk = readkey("ClientSK.key");
         PKCS8EncodedKeySpec cs = new PKCS8EncodedKeySpec(bytesSk);
         PrivateKey clientPrivateKey = kfRSA.generatePrivate(cs);
+
+        //SigA(g^x, g^y)
         signature.initSign(clientPrivateKey);
         signature.update(aPublicKey.getEncoded());
 		signature.update(bPublicKey.getEncoded());
@@ -229,9 +226,7 @@ public class Client {
 
 		cipherModeChange("ENCRYPT");
 		byte[] cipheredSignature = c.doFinal(step3);
-		//System.out.println(bytetoString(cipheredSignature));
-		//Envio
-        os.write(cipheredSignature); 
+        os.write(cipheredSignature); //sending Ek(SigA(g^x, g^y))
         os.flush();
     }
     
